@@ -9,8 +9,7 @@ function makeRandomString(length) {
     return text;
 }
 
-var Async = function(func, p1, p2, p3, p4, p5, p6, p7, p8)
-{
+var Async = function (func, p1, p2, p3, p4, p5, p6, p7, p8) {
     var as = {};
     as.code = "";
     as.func = func;
@@ -57,16 +56,20 @@ function nukePost(url, data, onSuccess, onError) {
         url: url,
         data: data,
         success: function (result) {
-            //async return result;
-
             if (result.returnCode == 0) {
-                onSuccess(result);
+                if (!isnull(onSuccess)) {
+                    onSuccess(result);
+                }
             } else {
-                onError(result);
+                if (!isnull(onError)) {
+                    onError(result);
+                }
             }
         },
         error: function (err) {
-            onError(err);
+            if (!isnull(onError)) {
+                onError(err);
+            }
         }
     });
 }
@@ -76,8 +79,7 @@ function aPost(onSuccess, url, data, onError) {
 }
 
 // Executes an Ajax Get using JQuery (expects default ResponseObject)
-// url: The url to post
-// data: The data to post
+// url: The url to get
 // onSuccess: Function to be called if sucess is achieved
 // onError: Function to be called if shit happens
 function nukeGet(url, onSuccess, onError) {
