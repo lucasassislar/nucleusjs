@@ -5,8 +5,8 @@ Library for simplifying web pages construction
 
 # Use cases
 
-1. Getting information from a REST service (POST/GET)
-1.1 POST
+# 1. Getting information from a REST service (POST/GET)
+# 1.1 POST
 	To do a post request, use the method nukePost:
 
 	// Executes an Ajax Post using JQuery (expects default ResponseObject)
@@ -30,7 +30,7 @@ Library for simplifying web pages construction
 	You can also do POST requests asynchronously by using the aPost method on the nmask modifier:
 	<div nmask='async(aPost, "localhost/rest/test).data"' name='test'></div>
 
-1.2 GET
+# 1.2 GET
 	Use the method nukeGet
 
 	// Executes an Ajax Get using JQuery (expects default ResponseObject)
@@ -42,7 +42,7 @@ Library for simplifying web pages construction
 	onSuccess and onError are not needed for the method to execute successfully.
 
 
-2. Populating the document with a JavaScript object
+# 2. Populating the document with a JavaScript object
 	You can populate an element with a javascript object by using the method
 	
 	// Populates every input/div component with the name property equals to the variable name on the data, 
@@ -69,7 +69,7 @@ Library for simplifying web pages construction
 
 
 
-	2.1 Masks
+	# 2.1 Masks
 		Masks can be used to modify the value of an element before it being updated into the form.
 
 		Example:
@@ -84,11 +84,11 @@ Library for simplifying web pages construction
 		This will execute the aGet function, passing the 'localhost/rest/test?key=$value$' url as a parameter, and will
 		insert the data returned by it on the value.
 
-3. Async
+# 3. Async
 	Some functions on the Nucleus library support async execution. 
 	Because JavaScript is not natively async, this function is only really used on HTML calls, like nmasks.
 
-	3.1 Structure of an Async Function
+# 	3.1 Structure of an Async Function
 		A Nucleus Async function will ALWAYS have the first argument be an asyncObject.
 		When your function succeeds, it should call the asyncObject.onSuccess to sinalize it's finished.
 
@@ -97,10 +97,10 @@ Library for simplifying web pages construction
 		}
 
 
-4. Nuke Parameter
+# 4. Nuke Parameter
 	You can add the nuke parameter to an HTML element to execute functions with it. 
 
-	4.1 Foreach
+	# 4.1 Foreach
 		The foreach function will loop through all elements in an array, and repeat the code based on it.
 
 		Example:
@@ -119,14 +119,14 @@ Library for simplifying web pages construction
 		Variables can be accessed by using $variableName$
 		The current loop index can be accessed by using $__index$
 
-	4.2 Exists
+	# 4.2 Exists
 		The exists function will remove a component if the supplied function returns false.
 
 		Example:
 		HTML:
 		<div nuke='exists isNan('test')'></div>
 
-	4.3 Value
+	# 4.3 Value
 		The value function will update a value in an object based on the input value.
 
 		Example:
@@ -136,7 +136,7 @@ Library for simplifying web pages construction
 		HTML:
 		<input type='checkbox' nuke='value obj.testBox'></input>
 
-	4.4 Checkbox
+	# 4.4 Checkbox
 		The checkbox function cascades the change on it's parent input to all other checkboxes by the desired selector
 
 
@@ -148,7 +148,7 @@ Library for simplifying web pages construction
 		<input type='checkbox' class='otherCheckboxes'></input>
 
 
-5. Extract information from document
+# 5. Extract information from document
 	You can use the function nukeGetFormData to extract information from the document
 
 	// Extracts information from input components
