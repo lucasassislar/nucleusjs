@@ -100,6 +100,11 @@ Library for simplifying web pages construction
 # 4. Nuke Parameter
 	You can add the nuke parameter to an HTML element to execute functions with it. 
 
+	
+	You can implement a new function by using __nukeHandlers.yourFunctionName, with parameters (words, parent).
+	See __nukeHandlers.exists for the most basic implementation.
+
+
 # 4.1 Foreach
 		The foreach function will loop through all elements in an array, and repeat the code based on it.
 
@@ -118,6 +123,8 @@ Library for simplifying web pages construction
 
 		Variables can be accessed by using $variableName$
 		The current loop index can be accessed by using $__index$
+
+
 
 # 4.2 Exists
 		The exists function will remove a component if the supplied function returns false.
