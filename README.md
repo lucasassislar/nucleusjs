@@ -69,7 +69,7 @@ Library for simplifying web pages construction
 
 
 
-	# 2.1 Masks
+# 2.1 Masks
 		Masks can be used to modify the value of an element before it being updated into the form.
 
 		Example:
@@ -100,7 +100,7 @@ Library for simplifying web pages construction
 # 4. Nuke Parameter
 	You can add the nuke parameter to an HTML element to execute functions with it. 
 
-	# 4.1 Foreach
+# 4.1 Foreach
 		The foreach function will loop through all elements in an array, and repeat the code based on it.
 
 		Example:
@@ -119,14 +119,14 @@ Library for simplifying web pages construction
 		Variables can be accessed by using $variableName$
 		The current loop index can be accessed by using $__index$
 
-	# 4.2 Exists
+# 4.2 Exists
 		The exists function will remove a component if the supplied function returns false.
 
 		Example:
 		HTML:
 		<div nuke='exists isNan('test')'></div>
 
-	# 4.3 Value
+# 4.3 Value
 		The value function will update a value in an object based on the input value.
 
 		Example:
@@ -136,7 +136,7 @@ Library for simplifying web pages construction
 		HTML:
 		<input type='checkbox' nuke='value obj.testBox'></input>
 
-	# 4.4 Checkbox
+# 4.4 Checkbox
 		The checkbox function cascades the change on it's parent input to all other checkboxes by the desired selector
 
 
