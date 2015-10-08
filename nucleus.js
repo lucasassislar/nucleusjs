@@ -1,3 +1,13 @@
+// Global variables
+
+var cpfMask = "999.999.999-99";
+var dateMask = "dd/mm/yyyy";
+var __nukeLocker = false;
+
+// A collection of every component that has an error
+var nukeErrors = [];
+var __nukeFormState = false;
+
 // Makes a random string of the specified size
 // length: The size of the string to make
 function makeRandomString(length) {
@@ -7,6 +17,26 @@ function makeRandomString(length) {
     for (var i = 0; i < length; i++)
         text += possible.charAt(Math.floor(Math.random() * possible.length));
     return text;
+}
+
+function nukeUpdateCycle() {
+    for (var i = 0; i < __nukeTrackers.length; i++) {
+        try {
+            var obj = __nukeTrackers[i];
+            var dataName = obj.dataName;
+            var currentData = eval(dataName);
+            var lastData = obj.value;
+
+            if (lastData != currentData) {
+                obj.event(currentData);
+                obj.value = currentData;
+            }
+        }
+        catch (ex) {
+        }
+    }
+
+    setTimeout(nukeUpdateCycle, 100);
 }
 
 var Async = function (func, p1, p2, p3, p4, p5, p6, p7, p8) {
@@ -56,6 +86,7 @@ function nukePost(url, data, onSuccess, onError) {
         url: url,
         data: data,
         success: function (result) {
+            //async return result;
             if (result.returnCode == 0) {
                 if (!isnull(onSuccess)) {
                     onSuccess(result);
@@ -79,7 +110,8 @@ function aPost(onSuccess, url, data, onError) {
 }
 
 // Executes an Ajax Get using JQuery (expects default ResponseObject)
-// url: The url to get
+// url: The url to post
+// data: The data to post
 // onSuccess: Function to be called if sucess is achieved
 // onError: Function to be called if shit happens
 function nukeGet(url, onSuccess, onError) {
@@ -121,8 +153,7 @@ String.prototype.replaceAt = function (index, character) {
     return this.substr(0, index) + character + this.substr(index + character.length);
 }
 
-var cpfMask = "999.999.999-99";
-var dateMask = "dd/mm/yyyy";
+
 
 // Converts a String to a Boolean correctly
 // string: The string to convert to boolean. Acceped values:
@@ -243,6 +274,9 @@ function nukeGetCleanJQuery(id) {
         }
     }
     if (id instanceof jQuery) {
+        if (id.length != undefined) {
+            return id[0];
+        }
         return id;
     }
 
@@ -252,7 +286,7 @@ function nukeGetCleanJQuery(id) {
 // id: The id to get the text from
 function nukeGetCleanTextValue(id) {
     var obj = nukeGetCleanJQuery(id);
-    var value = obj.value;
+    var value = obj[0].value;
     var maskData = $(obj).data('mask');
     if (maskData != null) {
         var mask = maskData.mask;
@@ -269,6 +303,8 @@ __nukeOptions.clickSetRadio = true;
 // Initializes the Nucleus environment, setting up variables that may
 // be needed
 function nukeSetUp() {
+    nukeUpdateCycle();
+
     if (__nukeOptions.clickSetRadio) {
         $(document).on('click', '.nukeClickInput', function () {
             var parent = $(this).parent();
@@ -319,10 +355,16 @@ function nukeChangeState(readOnly) {
     });
 }
 
+
+function changeScriptParent(str) {
+    var scriptTag = document.getElementsByTagName('script');
+    scriptTag = scriptTag[scriptTag.length - 1];
+    var parentTag = scriptTag.parentNode;
+    parentTag.innerHTML = str;
+}
+
 var __nukeHandlers = {};
-
-
-
+var __nukeSupressLogs = false;
 
 __nukeHandlers.foreach = function (words, parent) {
     var meself = $(parent);
@@ -355,12 +397,23 @@ __nukeHandlers.foreach = function (words, parent) {
         return; // object doesnt exist (yet?)
     }
 
+    if (!__nukeSupressLogs) {
+        if (array instanceof String) {
+            console.log('Data provided is not an array. Its a string. Did you intend to loop a String?');
+        }
+    }
+
+    if (array.length == undefined) {
+
+    }
+
     for (i = 0; i < array.length; i++) {
         var element = array[i];
         var thtml = html;
 
         var start = 0;
         var index = 0;
+
         for (; ;) {
             index = thtml.indexOf('$', start);
             if (index == -1) {
@@ -375,22 +428,62 @@ __nukeHandlers.foreach = function (words, parent) {
             }
 
             var endIndex = thtml.indexOf('$', index + 1);
+            if (endIndex == -1) {
+                break;
+            }
             var word = thtml.substring(index + 1, endIndex);
-            start = endIndex + 1;
+
+            var isNukeBlock = false;
+            // check if we are inside a NUKE block
+            var nIndex = thtml.lastIndexOf('"', index);
+            if (nIndex > 5) {
+                var nWords = thtml.substring(nIndex - 5, nIndex);
+                if (nWords == 'nuke=') {
+                    isNukeBlock = true;
+                }
+            }
 
             var value = word;
             if (word.indexOf('__index') != -1) {
                 value = value.replace('__index', i);
-            } else {
+            }
+            else {
                 if (value.indexOf('@') != -1) {
-                    value = value.replace(/@/g, 'element.');
-                    value = eval(value);
+                    value = value.replace(/@/g, arrayName + '[' + i + '].');
                 } else {
-                    value = eval('element.' + value);
+                    value = arrayName + '[' + i + '].' + value;
                 }
             }
 
-            thtml = thtml.replace('$' + word + '$', value);
+            if (value.indexOf('async') != -1) {
+                // async method
+                asyncCode = value.substring(value.lastIndexOf(')') + 1, value.length);
+                value = value.substring(0, value.lastIndexOf(')') + 1);
+                value = eval(value);
+                value.code = asyncCode;
+                value.key = makeRandomString(10);
+                value.div = '<div id=' + value.key + '></div>';
+
+                value.queue.push(function (data, as) {
+                    value = eval('data' + as.code);
+                    var inp = $('#' + as.key);
+                    inp[0].outerHTML = value;
+                });
+                value = value.div;
+            } else {
+                if (!isNukeBlock) {
+                    value = eval(value);
+                }
+            }
+
+            if (isNukeBlock) {
+                var ni = index + value.length + 2;
+                start = ni;
+                thtml = thtml.replace('$' + word + '$', '$' + value + '$');
+            }
+            else {
+                thtml = thtml.replace('$' + word + '$', value);
+            }
         }
 
         meself.append(thtml);
@@ -414,6 +507,174 @@ __nukeHandlers.exists = function (words, parent) {
     }
 }
 
+function nukeRemoveAll(toRmv, toReplace, str) {
+    while (str.indexOf(toRmv) != -1) {
+        str = str.replace(toRmv, toReplace);
+    }
+    return str;
+}
+
+__nukeHandlers.select = function (words, parent) {
+    var meself = $(parent);
+    var arrayName = words[1];
+    var name = words[2];
+    var indexName = null;
+    var selected = null;
+
+    if (words.length > 3) {
+        indexName = words[3];
+        if (words.length > 4) {
+            selected = words[4];
+        }
+    }
+
+    var varName = null;
+
+    if (arrayName.indexOf('.') != -1) {
+        var split = arrayName.split('.');
+        arrayName = split[0];
+        varName = split[1];
+    }
+
+    var array;
+    try {
+        array = eval(arrayName);
+    }
+    catch (ex) {
+        console.log(ex);
+        return; // object doesnt exist (yet?)
+    }
+
+    if (!__nukeSupressLogs) {
+        if (array instanceof String) {
+            console.log('Data provided is not an array. Its a string. Did you intend to loop a String?');
+        }
+    }
+
+    selected = nukeRemoveAll('$', '', selected);
+    selected = eval(selected);
+
+    var html = '';
+    var classes = $(meself).attr("class");
+    var nukeCmds = $(meself).attr("nuke");
+    var splot = nukeCmds.split(',');
+    var allNuke = '';
+    var first = false;
+    for (var i = 0; i < splot.length ; i++) {
+        var s = splot[i];
+        if (s[0] == ' ') {
+            s = s.substring(1, s.length);
+        }
+
+        if (s.indexOf('select') == 0) {
+            continue;
+        }
+        if (first) {
+            allNuke += ',';
+        }
+        first = true;
+        allNuke += s;
+    }
+
+
+
+    if (name[0] == '#') {
+        html = '<select nuke="' + allNuke + '"  class="' + classes + '" id="' + name + '">';
+    } else {
+        html = '<select nuke="' + allNuke + '"  class="' + classes + '" name="' + name + '">';
+    }
+
+    var i = 0;
+    for (var arr in array) {
+        var obj = array[arr];
+
+        var index = i;
+        if (!isnull(indexName)) {
+            index = eval('obj.' + indexName);
+        }
+        if (!isnull(arrayName)) {
+            obj = eval('obj.' + varName);
+        }
+
+        if (selected == index) {
+            html += '<option selected="selected" value="' + index + '" >' + obj + '</option>'
+        }
+        else {
+            html += '<option value="' + index + '" >' + obj + '</option>'
+        }
+
+        i++;
+    }
+    html += "</select>";
+    parent.outerHTML = html;
+
+    //meself.append(html);
+    //var sel = $(name);
+    //$(sel).attr("class", $(meself).attr("class"));
+    //$(meself).removeClass();
+}
+
+function replaceAll(find, replace, str) {
+    return str.replace(new RegExp(find, 'g'), replace);
+}
+
+__nukeHandlers.populate = function (words, parent) {
+    var meself = $(parent);
+    var dataName = words[1];
+
+    while (dataName.indexOf('$') != -1) {
+        dataName = dataName.replace('$', '');
+    }
+
+
+
+    var data;
+    try {
+        data = eval(dataName);
+    }
+    catch (ex) {
+        console.log(ex);
+        return; // object doesnt exist (yet?)
+    }
+
+    var trackerObj = {};
+    trackerObj.dataName = dataName;
+    trackerObj.value = data;
+    __nukeTrackers.push(trackerObj);
+
+    if (words.length > 2) {
+        nukePopulateForm(data, words[2]);
+        trackerObj.event = function (d) {
+            nukePopulateForm(d, words[2]);
+        }
+    }
+    else {
+        nukePopulateForm(data, meself);
+        trackerObj.event = function (d) {
+            nukePopulateForm(d, meself);
+        }
+    }
+}
+
+
+var __nukeHandlersChange = [];
+var __nukeTrackers = [];
+
+__nukeHandlers.event = function (words, parent) {
+    //var meself = $(parent);
+    //var eventName = words[1];
+    //var parentName = words[2];
+    //var action = words[3];
+
+    //var obj = {};
+    //obj.parentName = parentName;
+    //obj.action = action;
+
+    //if (eventName == 'change'){
+    //    __nukeHandlersChange.push(obj);
+    //}
+}
+
 // Update every component with the nuke property
 // parentId: The parent id to limit search for. Will be the whole document if ommited/null
 // * How it works *
@@ -427,72 +688,166 @@ __nukeHandlers.exists = function (words, parent) {
 //      - $__index$ to get the index on the loop
 //      You can execute code inside the $$ brackets, but you will always have to start with the varName.
 //      For example, this is doable:  $isBlocked ? 'Blocked' : 'Not Blocked'$
+//
+//      Though, you cannot do a foreach inside another foreach
 //      
 // - exists [boolean]
 //      The exists command will evaluate your boolean parameter, and delete
 //      the component if it shouldn't exist
 //
-function nukeRefresh(parentId) {
+// - select [array.varName] [name/id] optional: [indexVarName] [selectedByID]
+//      The select command will make a <select> component based on elements of an array
+//      
+//
+function nukeRefresh(parentId, self) {
     parentId = typeof parentId !== 'undefined' ? parentId : document;
+    self = typeof self !== 'undefined' ? self : false;
+
+    if (parentId.indexOf != undefined) {
+        if (parentId.indexOf('$') != -1) {
+            while (parentId.indexOf('$') != -1) {
+                parentId = parentId.replace('$', '');
+            }
+            var first = '';
+            if (parentId.indexOf('#') == 0) {
+                first = '#';
+                parentId = parentId.substring(1, parentId.length);
+            }
+
+            parentId = eval(parentId);
+            parentId = parentId + first;
+        }
+    }
+
     var parent = nukeGetCleanJQuery(parentId);
 
     var divs = $(parent).find("[nuke]");
-    divs.each(function (i) {
-        var meself = $(this);
+    for (var i = 0; i < divs.length; i++) {
+        var meself = divs[i];
 
-        var att = meself.attr('nuke');
-        var allNuke = att.split(',');
-
-        for (var j = 0; j < allNuke.length; j++) {
-            var spllited = allNuke[j].split(' ');
-            var first = spllited[0];
-
-            try {
-                var handler = __nukeHandlers[first];
-                if (!isnull(handler)) {
-                    handler(spllited, this);
-                }
-            } catch (ex) {
-                console.log(ex);
+        // see if any of our parents has a nuke attribute
+        var parents = $(meself).parents();
+        if (parents.length != 0) {
+            //var any = $(meself).parents('[nuke]');
+            if (parents[parents.length - 1].nodeName != 'HTML') {
+                continue;
             }
         }
-    });
+
+        var att = $(meself).attr('nuke');
+        __nukeExecNukeString(att, meself);
+    }
+
+    // check if ourselves actually have a nuke too
+    if (self) {
+        var nk = $(parent).attr('nuke');
+        if (!isnull(nk)) {
+            if (parent.length != undefined) {
+                parent = parent[0];
+            }
+            __nukeExecNukeString(nk, parent);
+        }
+    }
+
     __nukeRanOnce = true;
 
     nukeChangeState(__nukeFormState);
 }
 
-var __nukeLocker = false;
-$(document).on('change', '[nuke]', function () {
-    if (__nukeLocker) {
-        return;
-    }
+function parseNumber(str) {
+    return parseFloat(str.replace(/[^\d.-]/g, ''));
+}
 
-    var att = $(this).attr('nuke');
-    var spllited = att.split(' ');
-    var word = spllited[0];
+function __nukeExecNukeString(str, meself) {
+    var allNuke = str.split(',');
 
-    if (word == 'value') {
-        // parse the name and evaluate
-        var rest = att.substring(word.length, att.length);
-        __internalInitializeArray(rest);
-        eval(rest + ' = this.checked');
-    }
-    else if (word == 'checkbox') {
-        __nukeLocker = true;
-        var checkBoxSel = spllited[1];
-        var selector = nukeGetCleanJQuery(checkBoxSel);
-        $(selector).prop('checked', this.checked);
-        var classes = this.className.split(/\s+/);
-        for (var i = 0; i < classes.length; i++) {
-            $(nukeGetCleanJQuery('.' + classes[i])).prop('checked', this.checked);
-        }
-        if (spllited.length > 2) {
-            var eventName = spllited[2];
-            eval(eventName + '()');
+    for (var j = 0; j < allNuke.length; j++) {
+        var whole = allNuke[j];
+        if (whole[0] == ' ') {
+            whole = whole.substring(1, whole.length);
         }
 
-        __nukeLocker = false;
+        var spllited = whole.split(' ');
+        var first = spllited[0];
+
+        try {
+            var handler = __nukeHandlers[first];
+            if (!isnull(handler)) {
+                handler(spllited, meself);
+            }
+        } catch (ex) {
+            console.log(ex);
+        }
+    }
+}
+
+$(document).on('change', '[nuke]', function (ev) {
+    var att = $(ev.target).attr('nuke');
+    if (isnull(att)) {
+        att = $(this).attr('nuke');
+        if (isnull(att)) {
+            return;
+        }
+    }
+
+    var nukeCmds = att.split(',');
+    for (var i = 0; i < nukeCmds.length; i++) {
+        var str = nukeCmds[i];
+        var spllited = str.split(' ');
+        var word = spllited[0];
+
+        if (word == 'value') {
+            // parse the name and evaluate
+            var rest = str.substring(word.length, str.length);
+            while (rest.indexOf('$') != -1) {
+                rest = rest.replace('$', '');
+            }
+
+            __internalInitializeArray(rest);
+            var val;
+
+            if (ev.target.type == 'checkbox') {
+                val = ev.target.checked;
+            }
+            else {
+                val = ev.target.value;
+            }
+            eval(rest + ' = val');
+        }
+        else if (word == 'checkbox') {
+            if (__nukeLocker) {
+                return;
+            }
+
+            __nukeLocker = true;
+            var checkBoxSel = spllited[1];
+            var selector = nukeGetCleanJQuery(checkBoxSel);
+            $(selector).prop('checked', this.checked).change();
+            var classes = this.className.split(/\s+/);
+
+            for (var i = 0; i < classes.length; i++) {
+                var classSelector = $(nukeGetCleanJQuery('.' + classes[i]));
+                $(classSelector).prop('checked', this.checked);
+            }
+
+            if (spllited.length > 2) {
+                var eventName = spllited[2];
+                eval(eventName + '()');
+            }
+
+            __nukeLocker = false;
+        }
+        else if (word == 'event') {
+            var eventName = spllited[1];
+            if (eventName == 'change') {
+                var command = spllited[2];
+
+                if (command == 'redo') {
+                    var cmdId = spllited[3];
+                    nukeRefresh(cmdId, true);
+                }
+            }
+        }
     }
 });
 
@@ -523,8 +878,6 @@ function nukePopulateForm(data, formId) {
                     val = nmask;
                     var start = 0;
                     var index = 0;
-
-
 
                     for (; ;) {
                         index = nmask.indexOf('$', start);
@@ -641,8 +994,11 @@ function nukeGetFormData(formId) {
 
     var data = {};
     var jform = $(formId);
-    //var inputs = jform.find('input');
-    var inputs = jform.filter('input');
+
+    var found = jform.find('input');
+    var inputs = jform.filter('input').add(found);
+
+
     for (var i = 0; i < inputs.length; i++) {
         var input = inputs[i];
 
@@ -663,6 +1019,9 @@ function nukeGetFormData(formId) {
         }
         else {
             var value = nukeGetCleanTextValue(input);
+            if (isnull(value)) {
+                continue;
+            }
             str = 'data.' + id + ' = \'' + value + '\'';
         }
         eval(str);
@@ -690,9 +1049,7 @@ function nukeGetFormData(formId) {
     return data;
 }
 
-// A collection of every component that has an error
-var nukeErrors = [];
-var __nukeFormState = false;
+
 
 // Validation functions for input
 // ----- ### -------
@@ -821,14 +1178,75 @@ function arrayPresence(array, varName) {
     var newArr = {};
     for (var i = 0; i < array.length; i++) {
         var obj = array[i];
-        var data = eval(obj + '.' + varName);
-        eval(newArr + '.' + data + ' = true');
+        var data = eval('obj.' + varName);
+        eval('newArr.' + data + ' = true');
+    }
+    return newArr;
+}
+
+function arrayIndexBy(array, varName) {
+    var newArr = {};
+    for (var i = 0; i < array.length; i++) {
+        var obj = array[i];
+        var data = eval('obj.' + varName);
+        eval('newArr["' + data + '"]  = obj');
+    }
+    return newArr;
+}
+
+function arrayfyProperty(array, varName) {
+    var variable;
+    if (varName.indexOf(',') == -1) {
+        variable = [varName];
+    }
+    else {
+        variable = varName.split(',');
+        for (var i = 0; i < variable.length; i++) {
+            variable[i] = variable.replace(/ /g, '');
+        }
+    }
+
+    var newArr = [];
+    for (var i = 0; i < array.length; i++) {
+        var obj = array[i];
+
+        for (var j = 0; j < variable.length; j++) {
+            var data = eval('obj.' + variable[j]);
+
+            if (varName.length == 1) {
+                newArr[i] = data;
+            }
+            else {
+                eval('newArr[i].' + variable[j] + ' = data');
+            }
+        }
+    }
+    return newArr;
+}
+
+function arrayfyObject(data) {
+    var newArr = [];
+    var i = 0;
+    for (var key in data) {
+        if (data.hasOwnProperty(key)) {
+            var obj = data[key];
+            newArr[i] = obj;
+            i++;
+        }
     }
     return newArr;
 }
 
 Array.prototype.presence = function (varName) {
     return arrayPresence(this, varName);
+}
+
+Array.prototype.indexBy = function (varName) {
+    return arrayIndexBy(this, varName);
+}
+
+Array.prototype.arrafyProperty = function (varName) {
+    return arrayfyProperty(this, varName);
 }
 
 // DataTables extensions
