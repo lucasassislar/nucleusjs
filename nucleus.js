@@ -1174,6 +1174,33 @@ function getErrorMsg(errors) {
     return error;
 }
 
+function arrayNForeach(array, func) {
+    var last = null;
+
+    for (var i = 0; i < array.length; i++) {
+        var el = array[i];
+        if (i != array.length - 1){
+            var next = array[i + 1];
+        }
+        var nval = func(i, el, last, next);
+
+        array[i] = nval;
+        last = nval;
+    }
+}
+
+// Calculates values on an array, where each value is the sum of the last value + the current value.
+// Fn = Fn-1 + Fn-2
+// array: The array to calculate
+function fibonacciArray(array) {
+    arrayNForeach(array, function (i, element, last, next) {
+        if (last != null) {
+            return last + element;
+        }
+        return element;
+    });
+}
+
 function arrayPresence(array, varName) {
     var newArr = {};
     for (var i = 0; i < array.length; i++) {
@@ -1213,7 +1240,7 @@ function arrayfyProperty(array, varName) {
         for (var j = 0; j < variable.length; j++) {
             var data = eval('obj.' + variable[j]);
 
-            if (varName.length == 1) {
+            if (variable.length == 1) {
                 newArr[i] = data;
             }
             else {
